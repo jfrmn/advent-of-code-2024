@@ -170,53 +170,90 @@ main :: proc() {
 		// print(diag_bl_tr)
 	}
 
-	total : u64 = 0
-
-	// horizontal
+	// PART ONE
 	{
-		total += find_xmax_occurences(orginal_input)
+		total : u64 = 0
+
+		// horizontal
+		{
+			total += find_xmax_occurences(orginal_input)
+			
+			reversed := transform_to_reverse(orginal_input)
+			defer cleanup(reversed)
+			total += find_xmax_occurences(reversed)
+		}
+
+		// vertial
+		{
+			vert := transform_to_vertical(orginal_input)
+			defer cleanup(vert)
+			total += find_xmax_occurences(vert)
+
+			vert_reversed := transform_to_reverse(vert)
+			defer cleanup(vert_reversed)
+			total += find_xmax_occurences(vert_reversed)
+		}
+
+		// diagonal left to right
+		{
+			// tl to br
+			diag_tl_br := transform_to_diag_tl_br(orginal_input)
+			defer cleanup(diag_tl_br)
+			total += find_xmax_occurences(diag_tl_br)
+
+			// br to tl
+			diag_br_tl := transform_to_reverse(diag_tl_br)
+			defer cleanup(diag_br_tl)
+			total += find_xmax_occurences(diag_br_tl)
+		}
 		
-		reversed := transform_to_reverse(orginal_input)
-		defer cleanup(reversed)
-		total += find_xmax_occurences(reversed)
+		// diagonal right to left
+		{
+			// tr to bl
+			diag_tr_bl := transform_to_diag_tr_bl(orginal_input)
+			defer cleanup(diag_tr_bl)
+			total += find_xmax_occurences(diag_tr_bl)
+
+			// tr to bl
+			diag_bl_tr := transform_to_reverse(diag_tr_bl)
+			defer cleanup(diag_bl_tr)
+			total += find_xmax_occurences(diag_bl_tr)
+		}
+
+		fmt.printfln("Total \"XMAS\"es: %d", total)
 	}
 
-	// vertial
+	// PART TWO
 	{
-		vert := transform_to_vertical(orginal_input)
-		defer cleanup(vert)
-		total += find_xmax_occurences(vert)
+		total := 0
 
-		vert_reversed := transform_to_reverse(vert)
-		defer cleanup(vert_reversed)
-		total += find_xmax_occurences(vert_reversed)
+		for l in 1..<len(orginal_input)-1 {
+			for c in 1..<COLUMNS_IN_ORGINAL-1 {
+
+				// find 'A'
+				if orginal_input[l][c] != 'A' do continue
+				
+				tl := orginal_input[l-1][c-1]
+				tr := orginal_input[l-1][c+1]
+				bl := orginal_input[l+1][c-1]
+				br := orginal_input[l+1][c+1]
+
+				if !(
+					((tl == 'M') && (br == 'S')) ||
+					((tl == 'S') && (br == 'M'))) {
+					continue
+				}
+				
+				if !(
+					((tr == 'M') && (bl == 'S')) ||
+					((tr == 'S') && (bl == 'M'))) {
+					continue
+				}
+				
+				total += 1	
+			}
+		}
+
+		fmt.printfln("Total X-MASes: %d", total)
 	}
-
-	// diagonal left to right
-	{
-		// tl to br
-		diag_tl_br := transform_to_diag_tl_br(orginal_input)
-		defer cleanup(diag_tl_br)
-		total += find_xmax_occurences(diag_tl_br)
-
-		// br to tl
-		diag_br_tl := transform_to_reverse(diag_tl_br)
-		defer cleanup(diag_br_tl)
-		total += find_xmax_occurences(diag_br_tl)
-	}
-	
-	// diagonal right to left
-	{
-		// tr to bl
-		diag_tr_bl := transform_to_diag_tr_bl(orginal_input)
-		defer cleanup(diag_tr_bl)
-		total += find_xmax_occurences(diag_tr_bl)
-
-		// tr to bl
-		diag_bl_tr := transform_to_reverse(diag_tr_bl)
-		defer cleanup(diag_bl_tr)
-		total += find_xmax_occurences(diag_bl_tr)
-	}
-
-	fmt.println(total)
 }
