@@ -107,4 +107,43 @@ main :: proc() {
 		fmt.printfln("sum of results of valid euations: %d", sum_of_results_of_valid_eqs)
 	}
 
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// PART TWO
+	{
+		eq_loop2: for eq in input {
+
+			// check which numbers should be concatenated						
+			num_variations := u64(math.pow2_f32(len(eq.operands) - 1))
+			for variation in 0..<num_variations {
+
+				operands := make([dynamic]int, 1)
+
+				builder: strings.Builder
+				strings.builder_init_none(&builder)
+				defer strings.builder_destroy(&builder)
+
+				operands[0] = eq.operands[0]
+				for i in 1..<len(eq.operands) {
+
+					operand := eq.operands[i]
+					concat := test_bit(variation, i-1)
+
+					if concat {
+						last_operand := operands[len(operands)-1]
+
+						strings.builder_reset(&builder)
+						strings.write_int(&builder, last_operand)
+						strings.write_int(&builder, operand)
+						operands[len(operands)-1], _ = strconv.parse_int(strings.to_string(builder))
+						
+					} else {
+						append(&operands, operand)
+					}
+				}
+
+				
+			}
+		}
+	}
+
 }
