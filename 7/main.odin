@@ -23,7 +23,7 @@ read_input :: proc() -> []Equation {
 	result := make([dynamic]Equation)
 
 	entire_file_as_str := transmute(string)(entire_file)
-	for line in strings.split_lines_after_iterator(&entire_file_as_str) {
+	for line in strings.split_lines_iterator(&entire_file_as_str) {
 
 		remaining_line := line
 
@@ -34,16 +34,17 @@ read_input :: proc() -> []Equation {
 
 		remaining_line = line[parsed_len:]
 		assert(strings.starts_with(remaining_line, ": "))
-		remaining_line = line[2:]
+		remaining_line = remaining_line[2:]
 
 		num_operands := strings.count(remaining_line, " ") + 1
 		eq.operands = make([]int, num_operands)
 
 		i := 0
 		for num_as_str in strings.split_iterator(&remaining_line, " ") {
-			eq.operands[i], _ = strconv.parse_int(transmute(string)remaining_line, 10)
+			eq.operands[i], _ = strconv.parse_int(transmute(string)num_as_str, 10)
 			i += 1
 		}
+		assert(i == num_operands)
 
 		append(&result, eq)
 	}
@@ -56,44 +57,47 @@ cleanup :: proc(input: []Equation) {
 	delete(input)
 }
 
+test_bit :: proc(n: u64, i: int) -> bool {
+	assert(i >= 0)
+	return (n & (1 << uint(i))) != 0
+}
+
 main :: proc() {
 	
 	input := read_input()
 	defer cleanup(input)
 
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// PART ONE
 	{
 		sum_of_results_of_valid_eqs := 0
-		eq_loop: for eq in input {
+		eq_loop1: for eq in input {
 
-			for operator_mask in 0..<uint(math.pow2_f64(len(eq.operands)) - 1) {
+			num_variations := u64(math.pow2_f32(len(eq.operands) - 1))
+			for variation in 0..<num_variations {
 
 				value := eq.operands[0]
 				for i in 1..<len(eq.operands) {
 
 					operand := eq.operands[i]
+					operator := test_bit(variation, i-1)
 
-					assert(i >= 1)
-					bit_index := cast(uint)(i-1)
-					operator := (operator_mask >> bit_index) & 0x1
-					
-					if (operator == 0)      do value += operand
-					else if (operator == 1) do value *= operand
-					else do fmt.panicf("unknown operator %d", operator)
+					if (operator) do value += operand
+					else do value *= operand
 				}
 
 				if value == eq.result {
 					
 					fmt.printf("%d = %d", eq.result, eq.operands[0])
 					for i in 1..<len(eq.operands) {
-						bit_index := cast(uint)(i-1)
-						op := "+" if (operator_mask >> bit_index) & 0x1 == 0 else "*"
-						fmt.printf(" %s %d", op, eq.operands[i])
+						fmt.printf(" %s %d",
+							test_bit(variation, i-1) ? "+" : "*",
+							eq.operands[i])
 					}
 					fmt.println()
 
 					sum_of_results_of_valid_eqs += eq.result
-					continue eq_loop
+					continue eq_loop1
 				}
 			}
 
