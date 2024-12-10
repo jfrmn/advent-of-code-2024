@@ -57,9 +57,36 @@ cleanup :: proc(input: []Equation) {
 	delete(input)
 }
 
-test_bit :: proc(n: u64, i: int) -> bool {
-	assert(i >= 0)
-	return (n & (1 << uint(i))) != 0
+get_variation_of_operators :: proc(set_of_ops: []u8, num_ops_per_variation: int) -> [][]u8 {
+
+	num_variations := int(math.pow_f32(
+		f32(len(set_of_ops)),
+		f32(num_ops_per_variation)))
+
+	result := make([][]u8, num_variations)
+
+	for i in 0..<num_variations {
+		variation := make([]u8, num_ops_per_variation)
+		
+		remaining_value := i
+		for j in 0..<num_ops_per_variation {
+			if remaining_value == 0 {
+				variation[j] = set_of_ops[0]
+			} else {
+				variation[j] = set_of_ops[remaining_value % len(set_of_ops)]
+				remaining_value = int(remaining_value / len(set_of_ops))
+			}
+		}
+
+		result[i] = variation
+	}
+
+	return result
+}
+
+cleanup_variations :: proc(variations: [][]u8) {
+	for v in variations do delete(v)
+	delete(variations)
 }
 
 main :: proc() {
@@ -73,27 +100,26 @@ main :: proc() {
 		sum_of_results_of_valid_eqs := 0
 		eq_loop1: for eq in input {
 
-			num_variations := u64(math.pow2_f32(len(eq.operands) - 1))
-			for variation in 0..<num_variations {
+			variations := get_variation_of_operators([]u8{'+', '*'}, len(eq.operands) - 1)
+			defer cleanup_variations(variations)
+
+			for variation in variations{
 
 				value := eq.operands[0]
 				for i in 1..<len(eq.operands) {
 
 					operand := eq.operands[i]
-					operator := test_bit(variation, i-1)
+					operator := variation[i-1]
 
-					if (operator) do value += operand
-					else do value *= operand
+					     if (operator == '+') do value += operand
+					else if (operator == '*') do value *= operand
+					else do fmt.panicf("invalid operator")
 				}
 
 				if value == eq.result {
 					
 					fmt.printf("%d = %d", eq.result, eq.operands[0])
-					for i in 1..<len(eq.operands) {
-						fmt.printf(" %s %d",
-							test_bit(variation, i-1) ? "+" : "*",
-							eq.operands[i])
-					}
+					for i in 1..<len(eq.operands) do fmt.printf(" %c %d", variation[i-1], eq.operands[i])
 					fmt.println()
 
 					sum_of_results_of_valid_eqs += eq.result
@@ -107,43 +133,54 @@ main :: proc() {
 		fmt.printfln("sum of results of valid euations: %d", sum_of_results_of_valid_eqs)
 	}
 
+	fmt.println("--------------------")
+
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// PART TWO
 	{
+		sum_of_results_of_valid_eqs := 0
 		eq_loop2: for eq in input {
 
-			// check which numbers should be concatenated						
-			num_variations := u64(math.pow2_f32(len(eq.operands) - 1))
-			for variation in 0..<num_variations {
+			variations := get_variation_of_operators([]u8{'+', '*', '|'}, len(eq.operands) - 1)
+			defer cleanup_variations(variations)
 
-				operands := make([dynamic]int, 1)
+			sb: strings.Builder
+			strings.builder_init(&sb)
+			defer strings.builder_destroy(&sb)
 
-				builder: strings.Builder
-				strings.builder_init_none(&builder)
-				defer strings.builder_destroy(&builder)
+			for variation in variations{
 
-				operands[0] = eq.operands[0]
+				value := eq.operands[0]
 				for i in 1..<len(eq.operands) {
 
 					operand := eq.operands[i]
-					concat := test_bit(variation, i-1)
+					operator := variation[i-1]
 
-					if concat {
-						last_operand := operands[len(operands)-1]
+					     if (operator == '+') do value += operand
+					else if (operator == '*') do value *= operand
+					else if (operator == '|') {
+						strings.builder_reset(&sb)
+						strings.write_int(&sb, value)
+						strings.write_int(&sb, operand)
+						value, _ = strconv.parse_int(strings.to_string(sb))
 
-						strings.builder_reset(&builder)
-						strings.write_int(&builder, last_operand)
-						strings.write_int(&builder, operand)
-						operands[len(operands)-1], _ = strconv.parse_int(strings.to_string(builder))
-						
-					} else {
-						append(&operands, operand)
-					}
+					} else do fmt.panicf("invalid operator")
 				}
 
-				
-			}
-		}
-	}
+				if value == eq.result {
+					
+					fmt.printf("%d = %d", eq.result, eq.operands[0])
+					for i in 1..<len(eq.operands) do fmt.printf(" %c %d", variation[i-1], eq.operands[i])
+					fmt.println()
 
+					sum_of_results_of_valid_eqs += eq.result
+					continue eq_loop2
+				}
+			}
+
+			fmt.printfln("%d NOT POSSBILE", eq.result)
+		}
+
+		fmt.printfln("sum of results of valid euations: %d", sum_of_results_of_valid_eqs)
+	}
 }
