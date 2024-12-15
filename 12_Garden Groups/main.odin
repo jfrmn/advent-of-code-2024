@@ -5,6 +5,7 @@ import "core:strings"
 import "core:math"
 import "core:fmt"
 import "core:slice"
+import "core:sort"
 
 when #config(small, false) {
 	INPUT_FILENAME :: "input_small.txt"
@@ -160,39 +161,69 @@ main :: proc() {
 
 	// calculate sides (PART II)
 	{
-		for cluster in clusters {
+		for &cluster in clusters {
 
-			// for all directions
+			relevant_coords := make([dynamic][2]int)
+			defer delete(relevant_coords)
+
 			for d in 0..<4 {
 				
-				sides := make(map[int]byte)
+				clear_dynamic_array(&relevant_coords)
 
+				// for even directions (north and south) we look at the y coord
+				// for uneven (east and west) we look at the x coord
+				// coords_index := 1 if (d % 2) == 0 else 0
+				
 				for bb in cluster.boundingbox {
 					if bb[2] != d do continue
-
-					
-					// use x coords for north + south and y for east and west
-					relevant_coords_index := 0 if (d == 0 ||d == 2 ) else 1
-					
-					sidesbb[relevant_coords_index]
+					append_elem(&relevant_coords, [2]int{bb[0], bb[1]})
 				}
 
-			}
+				sort.heap_sort_proc(relevant_coords[:], proc(l: [2]int, r: [2]int) -> int {
+					if c := sort.compare_ints(l[1], r[1]); c != 0 do return c
+					return sort.compare_ints(l[0], r[0])
+				})
+				
+				for i in 0..<len(relevant_coords) {
+					
+					coords := relevant_coords[i]
+					found_adj := false
+					for j in i+1..<len(relevant_coords) {
+						other_coords := relevant_coords[j]
+						delta := math.abs(coords[0] - other_coords[0]) + math.abs(coords[1] - other_coords[1])
 
+						if delta == 1 {
+							found_adj = true
+							break
+						}
+					}
+
+					if !found_adj do cluster.sides += 1
+				}
+			}	
 		}
 	}
 
 	//
-	// print stats
+	// print price
 	//
 	{
 		total_price := 0
+		total_price_discounted := 0
 		for cluster, c in clusters {
-			fmt.printfln("\e[%dmCluster %c:\e[0m Perimeter: %d \tArea: %d", cluster.color, cluster.letter, cluster_get_perimeter(cluster), cluster.area)
+			fmt.printfln("\e[%dmCluster %c:\e[0m Perimeter: %d \tArea: %d \tSides: %d",
+				cluster.color,
+				cluster.letter,
+				cluster_get_perimeter(cluster),
+				cluster.area,
+				cluster.sides)
+			
 			total_price += cluster_get_perimeter(cluster) * cluster.area
+			total_price_discounted += cluster.sides * cluster.area
 		}
 		
 		fmt.printfln("total price: %d", total_price)
+		fmt.printfln("total price (discounted): %d", total_price_discounted)
 	}
 	
 	fmt.printfln("num clusters: %d", len(clusters))
